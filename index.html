@@ -197,16 +197,33 @@ const defaultConfig = {
 async function loadOrders() {
   try {
     const resp = await fetch('/api/orders');
-    if (!resp.ok) throw new Error('Unable to fetch orders');
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'Unable to fetch orders');
+    }
     const data = await resp.json();
     if (Array.isArray(data)) {
       allData = data;
     }
   } catch (err) {
     console.warn('Failed to load orders', err);
+    showFormMsg('Gagal memuat order: ' + err.message, false);
     allData = [];
   }
   renderAll();
+}
+
+async function handleApiResponse(resp) {
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `Request failed with ${resp.status}`);
+  }
+  const contentType = resp.headers.get('Content-Type') || '';
+  if (contentType.includes('application/json')) {
+    return resp.json();
+  }
+  const text = await resp.text();
+  throw new Error(text || 'Unexpected response format');
 }
 
 async function apiCreateOrder(record) {
@@ -215,7 +232,7 @@ async function apiCreateOrder(record) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(record)
   });
-  return resp.json();
+  return handleApiResponse(resp);
 }
 
 async function apiUpdateOrder(record) {
@@ -224,14 +241,14 @@ async function apiUpdateOrder(record) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(record)
   });
-  return resp.json();
+  return handleApiResponse(resp);
 }
 
 async function apiDeleteOrder(record) {
   const resp = await fetch(`/api/orders?id=${record.id}`, {
     method: 'DELETE'
   });
-  return resp.json();
+  return handleApiResponse(resp);
 }
 
 // Helpers
