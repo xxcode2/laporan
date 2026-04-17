@@ -514,26 +514,22 @@ document.getElementById('fDate').valueAsDate = new Date();
 function updateItemInputs() {
   const itemCount = parseInt(document.getElementById('fItems').value) || 1;
   const container = document.getElementById('itemPricesList');
-  const existingInputs = container.querySelectorAll('input');
   
   // Jika jumlah item berkurang, hapus input yang tidak perlu
-  while (existingInputs.length > itemCount) {
-    existingInputs[existingInputs.length - 1].parentElement.remove();
+  while (container.children.length > itemCount) {
+    container.lastElementChild.remove();
   }
   
-  // Tambah atau update input
-  for (let i = 0; i < itemCount; i++) {
-    if (i >= existingInputs.length) {
-      // Buat input baru
-      const div = document.createElement('div');
-      div.className = 'flex items-center gap-2';
-      div.innerHTML = `
-        <span class="text-xs text-gray-500 w-12">Item ${i + 1}:</span>
-        <input type="number" class="item-price flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none" min="0" value="0" onchange="calculateTotal()">
-        <span class="text-xs text-gray-600 w-8">rb</span>
-      `;
-      container.appendChild(div);
-    }
+  const existingInputs = container.querySelectorAll('input');
+  for (let i = existingInputs.length; i < itemCount; i++) {
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2';
+    div.innerHTML = `
+      <span class="text-xs text-gray-500 w-12">Item ${i + 1}:</span>
+      <input type="number" class="item-price flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none" min="0" value="0" onchange="calculateTotal()">
+      <span class="text-xs text-gray-600 w-8">rb</span>
+    `;
+    container.appendChild(div);
   }
   
   calculateTotal();
@@ -592,26 +588,31 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   };
 
   let result;
-  if (editTarget) {
-    const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
-    if (existing) {
-      result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
+  try {
+    if (editTarget) {
+      const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
+      if (existing) {
+        result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
+      } else {
+        throw new Error('Data order tidak ditemukan.');
+      }
+    } else {
+      result = await apiCreateOrder(record);
     }
-  } else {
-    result = await apiCreateOrder(record);
+  } catch (err) {
+    console.error('Order save failed:', err);
+    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan order. Coba lagi.', false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
+    lucide.createIcons();
   }
-
-  btn.disabled = false;
-  btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
-  lucide.createIcons();
 
   if (result && !result.error) {
     showFormMsg(editTarget ? 'Order berhasil diperbarui! ✓' : 'Order berhasil disimpan! ✓', true);
     resetForm();
     updateItemInputs();
     await loadOrders();
-  } else {
-    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan. Coba lagi.', false);
   }
 });
 
