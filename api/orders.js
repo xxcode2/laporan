@@ -18,6 +18,10 @@ function parseOrderData(body) {
 }
 
 module.exports = async (req, res) => {
+  if (!process.env.PRISMA_DATABASE_URL) {
+    return res.status(500).json({ error: 'Server is not configured. Set PRISMA_DATABASE_URL.' });
+  }
+
   try {
     if (req.method === 'GET') {
       const orders = await prisma.order.findMany({ orderBy: { createdAt: 'desc' } });

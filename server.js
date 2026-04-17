@@ -5,9 +5,9 @@ const ordersHandler = require('./api/orders');
 const app = express();
 app.use(express.json());
 app.use('/api/orders', ordersHandler);
-app.use('/', express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const port = process.env.PORT || 3000;

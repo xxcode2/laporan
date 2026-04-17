@@ -33,8 +33,9 @@ Aplikasi pencatatan keuangan harian untuk order Shopee dengan penyimpanan menggu
 - `vercel.json` sudah ditambahkan untuk mengarahkan:
   - `/api/*` ke fungsi serverless dalam `api/`
   - sisa route ke `index.html`
-- `vercel.json` versi 2 sekarang menggunakan builder `@vercel/node` untuk API dan `@vercel/static` untuk `index.html`.
-- Tidak perlu `public/` karena file statis dilayani langsung dari root.
+- `public/index.html` sekarang digunakan untuk deployment ke Vercel.
+- API `api/orders.js` akan bekerja dengan Vercel serverless.
+- Pastikan `PRISMA_DATABASE_URL` diatur di environment Vercel.
 
 ## Fitur baru
 
