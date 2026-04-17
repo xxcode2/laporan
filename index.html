@@ -426,7 +426,7 @@ function renderOrderList(type, orders, containerId, emptyId) {
           <div class="flex items-center gap-2 shrink-0">
             ${type==='Pending'?`
               <button onclick="editOrder('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-1.5">
-                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+                <i data-lucide="edit" class="w-4 h-4"></i> Edit
               </button>
               <button onclick="markCheckout('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-1.5">
                 <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout
@@ -701,5 +701,5 @@ async function markCheckout(id) {
 lucide.createIcons();
 loadOrders();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9edb4e69f29f833d',t:'MTc3NjQyNzYxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
