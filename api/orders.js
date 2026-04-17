@@ -18,8 +18,9 @@ function parseOrderData(body) {
 }
 
 module.exports = async (req, res) => {
-  if (!process.env.PRISMA_DATABASE_URL) {
-    return res.status(500).json({ error: 'Server is not configured. Set PRISMA_DATABASE_URL.' });
+  const dbUrl = process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!dbUrl) {
+    return res.status(500).json({ error: 'Server is not configured. Set PRISMA_DATABASE_URL, DATABASE_URL, or POSTGRES_URL.' });
   }
 
   try {
@@ -53,7 +54,8 @@ module.exports = async (req, res) => {
     res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
     return res.status(405).json({ error: `Method ${req.method} not allowed` });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('API /api/orders error:', error);
+    const message = error?.message || 'Internal server error';
+    return res.status(500).json({ error: message });
   }
 };
