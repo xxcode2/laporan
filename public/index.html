@@ -470,12 +470,13 @@ function renderSummary() {
 
   const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
   const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
+  const totalSellerIncome = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
   const profit = totalIncome - totalModal;
 
   container.innerHTML = `
     <div class="glass rounded-2xl p-5">
       <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i> Ringkasan Penjualan</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Penjualan</p>
           <p class="text-2xl font-bold text-emerald-400">${rp(totalIncome)}</p>
@@ -483,6 +484,10 @@ function renderSummary() {
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Modal</p>
           <p class="text-2xl font-bold text-red-400">${rp(totalModal)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Masuk Seller</p>
+          <p class="text-2xl font-bold text-emerald-300">${rp(totalSellerIncome)}</p>
         </div>
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Profit</p>
