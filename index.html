@@ -6,8 +6,6 @@
   <title>Laporan Keuangan Harian</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
-  <script src="/_sdk/data_sdk.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
   <script>
 tailwind.config = {
@@ -50,7 +48,21 @@ tailwind.config = {
        <p id="headerShop" class="text-xs text-gray-500">Toko Saya</p>
       </div>
      </div>
-     <div class="flex items-center gap-2"><input type="date" id="dateFilter" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none"> <button onclick="clearDateFilter()" class="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400" title="Reset filter"> <i data-lucide="rotate-ccw" class="w-4 h-4"></i> </button>
+     <div class="flex flex-wrap items-center gap-2 justify-end">
+       <input type="search" id="searchInput" placeholder="Cari customer..." class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none min-w-[180px]">
+       <select id="statusFilter" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none">
+         <option value="">Semua status</option>
+         <option value="Pending">Pending</option>
+         <option value="Terjual">Terjual</option>
+       </select>
+       <input type="date" id="dateFromFilter" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none" title="Dari tanggal">
+       <input type="date" id="dateToFilter" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none" title="Sampai tanggal">
+       <button onclick="clearDateFilter()" class="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400" title="Reset filter">
+         <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+       </button>
+       <button onclick="exportCsv()" class="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400" title="Export CSV">
+         <i data-lucide="download" class="w-4 h-4"></i>
+       </button>
      </div>
     </div>
    </header><!-- Stats -->
@@ -164,7 +176,11 @@ tailwind.config = {
 // State
 let allData = [];
 let deleteTarget = null;
-let currentDateFilter = '';
+let editTarget = null;
+let currentDateFrom = '';
+let currentDateTo = '';
+let currentSearch = '';
+let currentStatus = '';
 
 const defaultConfig = {
   app_title: 'Laporan Keuangan Harian',
@@ -178,50 +194,45 @@ const defaultConfig = {
   font_size: 14
 };
 
-// Element SDK
-window.elementSdk.init({
-  defaultConfig,
-  onConfigChange: async (config) => {
-    const c = { ...defaultConfig, ...config };
-    document.getElementById('headerTitle').textContent = c.app_title;
-    document.getElementById('headerShop').textContent = c.shop_name;
-    document.body.style.backgroundColor = c.bg_color;
-    document.body.style.color = c.text_color;
-    document.body.style.fontFamily = `${c.font_family}, Plus Jakarta Sans, sans-serif`;
-    document.body.style.fontSize = `${c.font_size}px`;
-  },
-  mapToCapabilities: (config) => {
-    const c = { ...defaultConfig, ...config };
-    return {
-      recolorables: [
-        { get: () => c.bg_color, set: v => { c.bg_color = v; window.elementSdk.setConfig({ bg_color: v }); }},
-        { get: () => c.surface_color, set: v => { c.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); }},
-        { get: () => c.text_color, set: v => { c.text_color = v; window.elementSdk.setConfig({ text_color: v }); }},
-        { get: () => c.accent_color, set: v => { c.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); }},
-        { get: () => c.secondary_color, set: v => { c.secondary_color = v; window.elementSdk.setConfig({ secondary_color: v }); }}
-      ],
-      borderables: [],
-      fontEditable: { get: () => c.font_family, set: v => { c.font_family = v; window.elementSdk.setConfig({ font_family: v }); }},
-      fontSizeable: { get: () => c.font_size, set: v => { c.font_size = v; window.elementSdk.setConfig({ font_size: v }); }}
-    };
-  },
-  mapToEditPanelValues: (config) => {
-    const c = { ...defaultConfig, ...config };
-    return new Map([['app_title', c.app_title], ['shop_name', c.shop_name]]);
+async function loadOrders() {
+  try {
+    const resp = await fetch('/api/orders');
+    if (!resp.ok) throw new Error('Unable to fetch orders');
+    const data = await resp.json();
+    if (Array.isArray(data)) {
+      allData = data;
+    }
+  } catch (err) {
+    console.warn('Failed to load orders', err);
+    allData = [];
   }
-});
+  renderAll();
+}
 
-// Data SDK
-const dataHandler = {
-  onDataChanged(data) {
-    allData = data;
-    renderAll();
-  }
-};
-(async () => {
-  const r = await window.dataSdk.init(dataHandler);
-  if (!r.isOk) console.error('Data SDK init failed');
-})();
+async function apiCreateOrder(record) {
+  const resp = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record)
+  });
+  return resp.json();
+}
+
+async function apiUpdateOrder(record) {
+  const resp = await fetch(`/api/orders?id=${record.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record)
+  });
+  return resp.json();
+}
+
+async function apiDeleteOrder(record) {
+  const resp = await fetch(`/api/orders?id=${record.id}`, {
+    method: 'DELETE'
+  });
+  return resp.json();
+}
 
 // Helpers
 function rp(n) { return 'Rp ' + (n||0).toLocaleString('id-ID'); }
@@ -254,12 +265,80 @@ function switchTab(t) {
 updateItemInputs();}
 
 // Filter
-document.getElementById('dateFilter').addEventListener('change', e => { currentDateFilter = e.target.value; renderAll(); });
-function clearDateFilter() { document.getElementById('dateFilter').value=''; currentDateFilter=''; renderAll(); }
+document.getElementById('dateFromFilter').addEventListener('change', e => { currentDateFrom = e.target.value; renderAll(); });
+document.getElementById('dateToFilter').addEventListener('change', e => { currentDateTo = e.target.value; renderAll(); });
+document.getElementById('searchInput').addEventListener('input', e => { currentSearch = e.target.value.trim().toLowerCase(); renderAll(); });
+document.getElementById('statusFilter').addEventListener('change', e => { currentStatus = e.target.value; renderAll(); });
+function clearDateFilter() { document.getElementById('dateFromFilter').value=''; document.getElementById('dateToFilter').value=''; currentDateFrom=''; currentDateTo=''; renderAll(); }
 
 function getFiltered() {
-  if (!currentDateFilter) return allData;
-  return allData.filter(d => d.date === currentDateFilter);
+  let items = allData;
+  if (currentDateFrom || currentDateTo) {
+    items = items.filter(d => {
+      const dates = [d.date, d.checkout_date].filter(Boolean);
+      if (!dates.length) return false;
+      return dates.some(rawDate => {
+        const t = new Date(rawDate).setHours(0,0,0,0);
+        if (Number.isNaN(t)) return false;
+        if (currentDateFrom) {
+          const from = new Date(currentDateFrom).setHours(0,0,0,0);
+          if (t < from) return false;
+        }
+        if (currentDateTo) {
+          const to = new Date(currentDateTo).setHours(0,0,0,0);
+          if (t > to) return false;
+        }
+        return true;
+      });
+    });
+  }
+  if (currentStatus) {
+    items = items.filter(d => d.status === currentStatus);
+  }
+  if (currentSearch) {
+    items = items.filter(d => {
+      const name = (d.customer_name || '').toLowerCase();
+      const note = (d.note || '').toLowerCase();
+      return name.includes(currentSearch) || note.includes(currentSearch);
+    });
+  }
+  return items;
+}
+
+function exportCsv() {
+  const rows = getFiltered();
+  if (!rows.length) {
+    showFormMsg('Tidak ada data untuk diekspor.', false);
+    return;
+  }
+
+  const header = ['Tanggal', 'Customer', 'Jumlah Item', 'Harga Item', 'Total Harga', 'DP', 'Metode DP', 'Modal', 'Status', 'Checkout Date', 'Checkout Amount', 'Catatan'];
+  const csv = [header.join(',')];
+  rows.forEach(o => {
+    const values = [
+      `"${o.date || ''}"`,
+      `"${o.customer_name || ''}"`,
+      o.items_count || 0,
+      `"${o.item_prices || ''}"`,
+      o.total_price || 0,
+      o.dp_amount || 0,
+      `"${o.dp_method || ''}"`,
+      o.modal || 0,
+      `"${o.status || ''}"`,
+      `"${o.checkout_date || ''}"`,
+      o.checkout_amount || 0,
+      `"${o.note || ''}"`
+    ];
+    csv.push(values.join(','));
+  });
+
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `laporan-order-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // Render
@@ -270,8 +349,9 @@ function renderAll() {
 }
 
 function renderStats() {
-  const pending = allData.filter(d => d.status === 'Pending');
-  const completed = allData.filter(d => d.status === 'Terjual');
+  const filtered = getFiltered();
+  const pending = filtered.filter(d => d.status === 'Pending');
+  const completed = filtered.filter(d => d.status === 'Terjual');
   
   const pendingIncome = pending.reduce((s,o) => s + ((o.dp_amount||0) + (o.checkout_amount||0)), 0);
   const completedIncome = completed.reduce((s,o) => s + (o.total_price||0), 0);
@@ -280,7 +360,7 @@ function renderStats() {
   const totalModal = completed.reduce((s,o) => s + (o.modal||0), 0);
   const profit = completedIncome - totalModal;
   
-  document.getElementById('statOrders').textContent = allData.length;
+  document.getElementById('statOrders').textContent = filtered.length;
   document.getElementById('statIncome').textContent = rp(totalIncome);
   document.getElementById('statModal').textContent = rp(totalModal);
   const el = document.getElementById('statProfit');
@@ -289,8 +369,9 @@ function renderStats() {
 }
 
 function renderOrders() {
-  const pending = allData.filter(d => d.status === 'Pending').sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  const completed = allData.filter(d => d.status === 'Terjual').sort((a,b) => (b.checkout_date||'').localeCompare(a.checkout_date||''));
+  const filtered = getFiltered();
+  const pending = filtered.filter(d => d.status === 'Pending').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const completed = filtered.filter(d => d.status === 'Terjual').sort((a,b) => (b.checkout_date||'').localeCompare(a.checkout_date||''));
   
   renderOrderList('Pending', pending, 'pendingList', 'emptyPending');
   renderOrderList('Completed', completed, 'completedList', 'emptyCompleted');
@@ -310,7 +391,7 @@ function renderOrderList(type, orders, containerId, emptyId) {
     const profit = (o.total_price||0) - (o.modal||0);
     
     return `
-      <div class="glass rounded-xl p-4 order-row" data-id="${o.__backendId}">
+      <div class="glass rounded-xl p-4 order-row" data-id="${o.id || o.__backendId}">
         <div class="flex flex-col md:flex-row md:items-center gap-3 justify-between">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
@@ -327,7 +408,10 @@ function renderOrderList(type, orders, containerId, emptyId) {
           </div>
           <div class="flex items-center gap-2 shrink-0">
             ${type==='Pending'?`
-              <button onclick="markCheckout('${o.__backendId}')" class="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-1.5">
+              <button onclick="editOrder('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-1.5">
+                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
+              </button>
+              <button onclick="markCheckout('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-1.5">
                 <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout
               </button>
             `:''}
@@ -335,9 +419,10 @@ function renderOrderList(type, orders, containerId, emptyId) {
               <div class="text-right">
                 <div class="text-xs text-gray-500">Profit</div>
                 <div class="font-bold text-sm ${profit>=0?'text-emerald-400':'text-red-400'}">${rp(profit)}</div>
+                ${o.checkout_amount>0?`<div class="text-xs text-gray-500 mt-1">Masuk seller</div><div class="font-semibold text-sm text-emerald-300">${rp(o.checkout_amount)}</div>`:''}
               </div>
             `:''}
-            <button onclick="requestDelete('${o.__backendId}')" class="p-2 rounded-lg hover:bg-red-500/10 text-gray-600 hover:text-red-400">
+            <button onclick="requestDelete('${o.id || o.__backendId}')" class="p-2 rounded-lg hover:bg-red-500/10 text-gray-600 hover:text-red-400">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </div>
@@ -350,14 +435,14 @@ function renderOrderList(type, orders, containerId, emptyId) {
 }
 
 function renderSummary() {
-  const completed = allData.filter(d=>d.status==='Terjual');
+  const completed = getFiltered().filter(d => d.status==='Terjual');
   const container = document.getElementById('summaryContent');
   const empty = document.getElementById('summaryEmpty');
   if (completed.length===0) { container.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
 
   const byMethod = {};
-  allData.forEach(o => { 
+  completed.forEach(o => { 
     if(o.dp_amount>0&&o.dp_method&&o.dp_method!=='-'){ 
       const m=o.dp_method; 
       if(!byMethod[m]) byMethod[m]={count:0,total:0}; 
@@ -417,7 +502,6 @@ function updateItemInputs() {
   // Jika jumlah item berkurang, hapus input yang tidak perlu
   while (existingInputs.length > itemCount) {
     existingInputs[existingInputs.length - 1].parentElement.remove();
-    existingInputs[existingInputs.length - 1].remove();
   }
   
   // Tambah atau update input
@@ -459,24 +543,22 @@ function getItemPrices() {
 
 document.getElementById("orderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (allData.length >= 999) {
+  if (!editTarget && allData.length >= 999) {
     showFormMsg('Batas 999 order tercapai. Hapus beberapa order dulu.', false);
     return;
   }
   const btn = document.getElementById('submitBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-[#0a0f1e] border-t-transparent rounded-full"></span> Menyimpan...';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-[#0a0f1e] border-t-transparent rounded-full"></span> Menyimpan...';
 
   const itemCount = parseInt(document.getElementById('fItems').value) || 1;
   const itemPrices = getItemPrices(); // Ambil harga per item
   const modalPerItem = parseInt(document.getElementById('fModalPerItem').value) || 0;
   const dpAmount = parseInt(document.getElementById('fDp').value) || 0;
 
-  // Hitung total dengan harga per item yang berbeda
   const totalPrice = itemPrices.reduce((sum, price) => sum + (price * 1000), 0);
   const totalModal = modalPerItem * itemCount * 1000; // Modal × jumlah item
   const totalDp = dpAmount * 1000;
-
-  // Format item prices untuk ditampilkan
   const itemPricesStr = itemPrices.map(p => p + 'k').join(', ');
 
   const record = {
@@ -492,16 +574,27 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
     note: document.getElementById('fNote').value.trim()
   };
 
-  const result = await window.dataSdk.create(record);
-  btn.disabled = false; btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
+  let result;
+  if (editTarget) {
+    const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
+    if (existing) {
+      result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
+    }
+  } else {
+    result = await apiCreateOrder(record);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
   lucide.createIcons();
 
-  if (result.isOk) {
-    showFormMsg('Order berhasil disimpan! ✓', true);
+  if (result && !result.error) {
+    showFormMsg(editTarget ? 'Order berhasil diperbarui! ✓' : 'Order berhasil disimpan! ✓', true);
     resetForm();
-    updateItemInputs(); // Reset item inputs
+    updateItemInputs();
+    await loadOrders();
   } else {
-    showFormMsg('Gagal menyimpan. Coba lagi.', false);
+    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan. Coba lagi.', false);
   }
 });
 
@@ -513,7 +606,37 @@ function showFormMsg(msg, ok) {
   setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
+function updateFormMode() {
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
+}
+
+function editOrder(id) {
+  const record = allData.find(d => d.id === id || d.__backendId === id);
+  if (!record) return;
+  editTarget = id;
+  document.getElementById('fDate').value = record.date || '';
+  document.getElementById('fCustomer').value = record.customer_name || '';
+  document.getElementById('fItems').value = record.items_count || 1;
+  document.getElementById('fModalPerItem').value = record.items_count ? Math.round((record.modal || 0) / 1000 / record.items_count) : 0;
+  document.getElementById('fDp').value = Math.round((record.dp_amount || 0) / 1000);
+  document.getElementById('fDpMethod').value = record.dp_method || '-';
+  document.getElementById('fNote').value = record.note || '';
+  updateItemInputs();
+
+  const prices = (record.item_prices || '').split(',').map(p => parseInt(p.replace(/k/gi, '').trim()) || 0);
+  const inputs = document.querySelectorAll('.item-price');
+  inputs.forEach((input, index) => {
+    if (index < prices.length) input.value = prices[index];
+    else input.value = 0;
+  });
+  calculateTotal();
+  updateFormMode();
+  switchTab('add');
+}
+
 function resetForm() {
+  editTarget = null;
   document.getElementById('fCustomer').value='';
   document.getElementById('fItems').value='1';
   document.getElementById('fModalPerItem').value='0';
@@ -521,6 +644,7 @@ function resetForm() {
   document.getElementById('fDpMethod').value='-';
   document.getElementById('fNote').value='';
   updateItemInputs();
+  updateFormMode();
 }
 
 // Delete
@@ -530,23 +654,35 @@ async function confirmDelete() {
   if (!deleteTarget) return;
   const btn = document.getElementById('confirmDeleteBtn');
   btn.disabled = true; btn.textContent = 'Menghapus...';
-  const record = allData.find(d => d.__backendId === deleteTarget);
-  if (record) { const r = await window.dataSdk.delete(record); if (!r.isOk) showFormMsg('Gagal menghapus', false); }
+  const record = allData.find(d => d.id === deleteTarget || d.__backendId === deleteTarget);
+  if (record) {
+    const r = await apiDeleteOrder({ id: record.id || record.__backendId });
+    if (r?.error) showFormMsg('Gagal menghapus', false);
+    else await loadOrders();
+  }
   btn.disabled = false; btn.textContent = 'Hapus';
   cancelDelete();
 }
 
 // Mark checkout - move from Pending to Terjual
 async function markCheckout(id) {
-  const record = allData.find(d => d.__backendId === id);
+  const record = allData.find(d => d.__backendId === id || d.id === id);
   if (!record) return;
-  
-  const updated = { ...record, status: 'Terjual', checkout_date: new Date().toISOString().split('T')[0] };
-  const result = await window.dataSdk.update(updated);
-  if (!result.isOk) showFormMsg('Gagal checkout', false);
+  const remaining = (record.total_price || 0) - (record.dp_amount || 0);
+  const updated = {
+    ...record,
+    status: 'Terjual',
+    checkout_date: new Date().toISOString().split('T')[0],
+    checkout_amount: remaining > 0 ? remaining : 0,
+    id: record.id || record.__backendId
+  };
+  const result = await apiUpdateOrder(updated);
+  if (result?.error) showFormMsg('Gagal checkout', false);
+  else await loadOrders();
 }
 
 lucide.createIcons();
+loadOrders();
 </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9edb4e69f29f833d',t:'MTc3NjQyNzYxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
