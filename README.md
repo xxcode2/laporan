@@ -33,7 +33,7 @@ Aplikasi pencatatan keuangan harian untuk order Shopee dengan penyimpanan menggu
 - `vercel.json` sudah ditambahkan untuk mengarahkan:
   - `/api/*` ke fungsi serverless dalam `api/`
   - sisa route ke `index.html`
-- `vercel.json` versi 2 sekarang menggunakan builder `@vercel/node`.
+- `vercel.json` versi 2 sekarang menggunakan builder `@vercel/node` untuk API dan `@vercel/static` untuk `index.html`.
 - Tidak perlu `public/` karena file statis dilayani langsung dari root.
 
 ## Fitur baru
