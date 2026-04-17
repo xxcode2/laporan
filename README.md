@@ -28,6 +28,13 @@ Aplikasi pencatatan keuangan harian untuk order Shopee dengan penyimpanan menggu
 
 > `npm run dev` sekarang menjalankan `server.js`, jadi `/api/orders` akan tersedia secara lokal.
 
+## Vercel deployment
+
+- `vercel.json` sudah ditambahkan untuk mengarahkan:
+  - `/api/*` ke fungsi serverless dalam `api/`
+  - sisa route ke `index.html`
+- Tidak perlu `public/` karena file statis dilayani langsung dari root.
+
 ## Fitur baru
 
 - Filter status order (`Pending` / `Terjual`)
