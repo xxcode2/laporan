@@ -592,26 +592,37 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   };
 
   let result;
-  if (editTarget) {
-    const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
-    if (existing) {
-      result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
+  let failed = false;
+  try {
+    if (editTarget) {
+      const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
+      if (existing) {
+        result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
+      } else {
+        throw new Error('Data order tidak ditemukan untuk diperbarui.');
+      }
+    } else {
+      result = await apiCreateOrder(record);
     }
-  } else {
-    result = await apiCreateOrder(record);
+  } catch (error) {
+    failed = true;
+    console.error('Order save/update error:', error);
+    showFormMsg(editTarget ? 'Gagal memperbarui order: ' + (error.message || 'Terjadi kesalahan.') : 'Gagal menyimpan: ' + (error.message || 'Terjadi kesalahan.'), false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
+    lucide.createIcons();
   }
 
-  btn.disabled = false;
-  btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
-  lucide.createIcons();
-
-  if (result && !result.error) {
-    showFormMsg(editTarget ? 'Order berhasil diperbarui! ✓' : 'Order berhasil disimpan! ✓', true);
-    resetForm();
-    updateItemInputs();
-    await loadOrders();
-  } else {
-    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan. Coba lagi.', false);
+  if (!failed) {
+    if (result && !result.error) {
+      showFormMsg(editTarget ? 'Order berhasil diperbarui! ✓' : 'Order berhasil disimpan! ✓', true);
+      resetForm();
+      updateItemInputs();
+      await loadOrders();
+    } else {
+      showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan. Coba lagi.', false);
+    }
   }
 });
 
@@ -671,14 +682,23 @@ async function confirmDelete() {
   if (!deleteTarget) return;
   const btn = document.getElementById('confirmDeleteBtn');
   btn.disabled = true; btn.textContent = 'Menghapus...';
-  const record = allData.find(d => d.id === deleteTarget || d.__backendId === deleteTarget);
-  if (record) {
-    const r = await apiDeleteOrder({ id: record.id || record.__backendId });
-    if (r?.error) showFormMsg('Gagal menghapus', false);
-    else await loadOrders();
+  try {
+    const record = allData.find(d => d.id === deleteTarget || d.__backendId === deleteTarget);
+    if (record) {
+      const r = await apiDeleteOrder({ id: record.id || record.__backendId });
+      if (r?.error) {
+        showFormMsg('Gagal menghapus: ' + (r.error || 'Terjadi kesalahan.'), false);
+      } else {
+        await loadOrders();
+      }
+    }
+  } catch (error) {
+    console.error('Delete order error:', error);
+    showFormMsg('Gagal menghapus: ' + (error.message || 'Terjadi kesalahan.'), false);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Hapus';
+    cancelDelete();
   }
-  btn.disabled = false; btn.textContent = 'Hapus';
-  cancelDelete();
 }
 
 // Mark checkout - move from Pending to Terjual
@@ -693,9 +713,17 @@ async function markCheckout(id) {
     checkout_amount: remaining > 0 ? remaining : 0,
     id: record.id || record.__backendId
   };
-  const result = await apiUpdateOrder(updated);
-  if (result?.error) showFormMsg('Gagal checkout', false);
-  else await loadOrders();
+  try {
+    const result = await apiUpdateOrder(updated);
+    if (result?.error) {
+      showFormMsg('Gagal checkout: ' + (result.error || 'Terjadi kesalahan.'), false);
+    } else {
+      await loadOrders();
+    }
+  } catch (error) {
+    console.error('Checkout error:', error);
+    showFormMsg('Gagal checkout: ' + (error.message || 'Terjadi kesalahan.'), false);
+  }
 }
 
 lucide.createIcons();
