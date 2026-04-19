@@ -426,7 +426,7 @@ function renderOrderList(type, orders, containerId, emptyId) {
           <div class="flex items-center gap-2 shrink-0">
             ${type==='Pending'?`
               <button onclick="editOrder('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-1.5">
-                <i data-lucide="edit" class="w-4 h-4"></i> Edit
+                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
               </button>
               <button onclick="markCheckout('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-1.5">
                 <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout
@@ -470,13 +470,12 @@ function renderSummary() {
 
   const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
   const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
-  const totalSellerIncome = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
   const profit = totalIncome - totalModal;
 
   container.innerHTML = `
     <div class="glass rounded-2xl p-5">
       <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i> Ringkasan Penjualan</h3>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Penjualan</p>
           <p class="text-2xl font-bold text-emerald-400">${rp(totalIncome)}</p>
@@ -484,10 +483,6 @@ function renderSummary() {
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Modal</p>
           <p class="text-2xl font-bold text-red-400">${rp(totalModal)}</p>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4 text-center">
-          <p class="text-xs text-gray-500 mb-1">Masuk Seller</p>
-          <p class="text-2xl font-bold text-emerald-300">${rp(totalSellerIncome)}</p>
         </div>
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Profit</p>
@@ -519,22 +514,26 @@ document.getElementById('fDate').valueAsDate = new Date();
 function updateItemInputs() {
   const itemCount = parseInt(document.getElementById('fItems').value) || 1;
   const container = document.getElementById('itemPricesList');
+  const existingInputs = container.querySelectorAll('input');
   
   // Jika jumlah item berkurang, hapus input yang tidak perlu
-  while (container.children.length > itemCount) {
-    container.lastElementChild.remove();
+  while (existingInputs.length > itemCount) {
+    existingInputs[existingInputs.length - 1].parentElement.remove();
   }
   
-  const existingInputs = container.querySelectorAll('input');
-  for (let i = existingInputs.length; i < itemCount; i++) {
-    const div = document.createElement('div');
-    div.className = 'flex items-center gap-2';
-    div.innerHTML = `
-      <span class="text-xs text-gray-500 w-12">Item ${i + 1}:</span>
-      <input type="number" class="item-price flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none" min="0" value="0" onchange="calculateTotal()">
-      <span class="text-xs text-gray-600 w-8">rb</span>
-    `;
-    container.appendChild(div);
+  // Tambah atau update input
+  for (let i = 0; i < itemCount; i++) {
+    if (i >= existingInputs.length) {
+      // Buat input baru
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2';
+      div.innerHTML = `
+        <span class="text-xs text-gray-500 w-12">Item ${i + 1}:</span>
+        <input type="number" class="item-price flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none" min="0" value="0" onchange="calculateTotal()">
+        <span class="text-xs text-gray-600 w-8">rb</span>
+      `;
+      container.appendChild(div);
+    }
   }
   
   calculateTotal();
@@ -593,31 +592,26 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   };
 
   let result;
-  try {
-    if (editTarget) {
-      const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
-      if (existing) {
-        result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
-      } else {
-        throw new Error('Data order tidak ditemukan.');
-      }
-    } else {
-      result = await apiCreateOrder(record);
+  if (editTarget) {
+    const existing = allData.find(d => d.id === editTarget || d.__backendId === editTarget);
+    if (existing) {
+      result = await apiUpdateOrder({ ...existing, ...record, id: editTarget });
     }
-  } catch (err) {
-    console.error('Order save failed:', err);
-    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan order. Coba lagi.', false);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
-    lucide.createIcons();
+  } else {
+    result = await apiCreateOrder(record);
   }
+
+  btn.disabled = false;
+  btn.innerHTML = editTarget ? '<i data-lucide="save" class="w-4 h-4"></i> Update Order' : '<i data-lucide="save" class="w-4 h-4"></i> Simpan Order';
+  lucide.createIcons();
 
   if (result && !result.error) {
     showFormMsg(editTarget ? 'Order berhasil diperbarui! ✓' : 'Order berhasil disimpan! ✓', true);
     resetForm();
     updateItemInputs();
     await loadOrders();
+  } else {
+    showFormMsg(editTarget ? 'Gagal memperbarui order. Coba lagi.' : 'Gagal menyimpan. Coba lagi.', false);
   }
 });
 
@@ -707,5 +701,5 @@ async function markCheckout(id) {
 lucide.createIcons();
 loadOrders();
 </script>
-</body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9edb4e69f29f833d',t:'MTc3NjQyNzYxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
