@@ -394,62 +394,81 @@ function renderOrders() {
   renderOrderList('Completed', completed, 'completedList', 'emptyCompleted');
 }
 
-function renderOrderList(type, orders, containerId, emptyId) {
-  const container = document.getElementById(containerId);
-  const empty = document.getElementById(emptyId);
-  
-  if (orders.length === 0) { container.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  
-  container.innerHTML = orders.map(o => {
-    const priceArr = (o.item_prices||'').split(',').map(p => parseInt(p.trim())||0);
-    const prices = priceArr.map(p => rp(p)).join(' + ');
-    const remaining = (o.total_price||0) - (o.dp_amount||0);
-    const profit = (o.total_price||0) - (o.modal||0);
-    
-    return `
-      <div class="glass rounded-xl p-4 order-row" data-id="${o.id || o.__backendId}">
-        <div class="flex flex-col md:flex-row md:items-center gap-3 justify-between">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="font-semibold text-white text-sm">${o.customer_name||'-'}</span>
-              <span class="text-xs text-gray-500">${o.items_count||0} item</span>
-            </div>
-            <div class="text-sm text-gray-400 mb-2">${prices}</div>
-            <div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-              <span><strong class="text-white">${rp(o.total_price||0)}</strong> total</span>
-              ${o.dp_amount>0?`<span>DP <strong class="text-amber-300">${rp(o.dp_amount)}</strong> ${methodBadge(o.dp_method)}</span>`:''}
-              ${type==='Pending'?`<span>Sisa <strong class="text-orange-300">${rp(remaining)}</strong></span>`:''}
-            </div>
-            ${o.note?`<p class="text-xs text-gray-600 mt-1.5 italic">${o.note}</p>`:''}
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            ${type==='Pending'?`
-              <button onclick="editOrder('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-1.5">
-                <i data-lucide="edit-2" class="w-4 h-4"></i> Edit
-              </button>
-              <button onclick="markCheckout('${o.id || o.__backendId}')" class="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-1.5">
-                <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout
-              </button>
-            `:''}
-            ${type==='Completed'?`
-              <div class="text-right">
-                <div class="text-xs text-gray-500">Profit</div>
-                <div class="font-bold text-sm ${profit>=0?'text-emerald-400':'text-red-400'}">${rp(profit)}</div>
-                ${o.checkout_amount>0?`<div class="text-xs text-gray-500 mt-1">Masuk seller</div><div class="font-semibold text-sm text-emerald-300">${rp(o.checkout_amount)}</div>`:''}
+ function renderOrderList(type, orders, containerId, emptyId) {
+      const container = document.getElementById(containerId);
+      const empty = document.getElementById(emptyId);
+      
+      if (orders.length === 0) { 
+        container.innerHTML = ''; 
+        empty.classList.remove('hidden'); 
+        return; 
+      }
+      empty.classList.add('hidden');
+      
+      container.innerHTML = orders.map(o => {
+        const priceArr = (o.item_prices||'').split(',').map(p => parseInt(p.trim())||0);
+        const prices = priceArr.map(p => rp(p)).join(' + ');
+        const remaining = (o.total_price||0) - (o.dp_amount||0);
+        const profit = (o.total_price||0) - (o.modal||0);
+        
+        return `
+          <div class="glass rounded-3xl p-5 order-row" data-id="${o.id || o.__backendId}">
+            <div class="flex flex-col lg:flex-row lg:items-start gap-4 justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                  <span class="inline-flex items-center rounded-full bg-slate-950/70 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">${fmtDate(o.date)}</span>
+                  <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${type==='Pending'?'bg-amber-500/15 text-amber-300':'bg-emerald-500/15 text-emerald-300'}">${type}</span>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h3 class="text-xl font-semibold text-white truncate">${o.customer_name||'-'}</h3>
+                    <span class="text-sm text-slate-300">${o.items_count||0} item</span>
+                  </div>
+                  <p class="text-sm text-slate-200 leading-6">${prices}</p>
+                </div>
+                <div class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div class="rounded-2xl bg-slate-950/70 border border-white/10 p-3">
+                    <p class="text-xs text-slate-400">Total</p>
+                    <p class="font-semibold text-white">${rp(o.total_price||0)}</p>
+                  </div>
+                  <div class="rounded-2xl bg-slate-950/70 border border-white/10 p-3">
+                    <p class="text-xs text-slate-400">Modal</p>
+                    <p class="font-semibold ${o.modal>0?'text-red-300':'text-slate-300'}">${rp(o.modal||0)}</p>
+                  </div>
+                  ${o.dp_amount>0?`<div class="rounded-2xl bg-slate-950/70 border border-white/10 p-3"><p class="text-xs text-slate-400">DP</p><p class="font-semibold text-amber-300">${rp(o.dp_amount)}</p>${methodBadge(o.dp_method)}</div>`:''}
+                  ${type==='Pending'?`<div class="rounded-2xl bg-slate-950/70 border border-white/10 p-3"><p class="text-xs text-slate-400">Sisa</p><p class="font-semibold text-orange-300">${rp(remaining)}</p></div>`:''}
+                </div>
+                ${o.note?`<div class="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4 text-slate-100"><p class="text-xs text-amber-300 uppercase tracking-[0.15em] mb-2">Catatan</p><p class="text-sm leading-6">${o.note}</p></div>`:''}
               </div>
-            `:''}
-            <button onclick="requestDelete('${o.id || o.__backendId}')" class="p-2 rounded-lg hover:bg-red-500/10 text-gray-600 hover:text-red-400">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+              <div class="flex flex-col gap-3 items-start sm:items-end">
+                ${type==='Pending'?`
+                  <div class="flex flex-wrap gap-2">
+                    <button onclick="editOrder('${o.id || o.__backendId}')" class="px-4 py-2 rounded-2xl bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-2">
+                      <i data-lucide="pencil" class="w-4 h-4"></i> Edit
+                    </button>
+                    <button onclick="markCheckout('${o.id || o.__backendId}')" class="px-4 py-2 rounded-2xl bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold flex items-center gap-2">
+                      <i data-lucide="check-circle" class="w-4 h-4"></i> Checkout
+                    </button>
+                  </div>
+                `:''}
+                ${type==='Completed'?`
+                  <div class="rounded-2xl bg-white/5 p-3 text-right w-full sm:w-auto">
+                    <p class="text-xs text-gray-500">Profit</p>
+                    <p class="font-bold text-sm ${profit>=0?'text-emerald-400':'text-red-400'}">${rp(profit)}</p>
+                    ${o.checkout_amount>0?`<p class="text-xs text-gray-500 mt-2">Masuk seller</p><p class="font-semibold text-sm text-emerald-300">${rp(o.checkout_amount)}</p>`:''}
+                  </div>
+                `:''}
+                <button onclick="requestDelete('${o.id || o.__backendId}')" class="p-2 rounded-2xl hover:bg-red-500/10 text-slate-300 hover:text-red-400">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-  
-  lucide.createIcons();
-}
+        `;
+      }).join('');
+      
+      lucide.createIcons();
+    }
 
 function renderSummary() {
   const completed = getFiltered().filter(d => d.status==='Terjual');
