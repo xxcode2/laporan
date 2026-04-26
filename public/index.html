@@ -590,6 +590,11 @@ function renderSummary() {
   // Profit = Total Penjualan - Total Modal
   const profit = totalIncome - totalModal;
   
+  // Total penjualan terjual dan pending terpisah
+  const totalIncomeCompleted = completed.reduce((s,o)=>s+(o.total_price||0),0);
+  const totalIncomePending = pending.reduce((s,o)=>s+(o.total_price||0),0);
+  const totalDpPending = pending.reduce((s,o)=>s+(o.dp_amount||0),0);
+  
   // Uang Masuk Seller = checkout_amount dari terjual + dp_amount dari pending
   const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0) + 
                           pending.reduce((s,o)=>s+(o.dp_amount||0),0);
@@ -616,6 +621,27 @@ function renderSummary() {
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Profit</p>
           <p class="text-2xl font-bold ${profit>=0?'text-blue-400':'text-red-400'}">${rp(profit)}</p>
+        </div>
+      </div>
+    </div>
+    <div class="glass rounded-2xl p-5 mt-5">
+      <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-amber-400"></i> Breakdown Penjualan</h3>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Terjual</p>
+          <p class="text-2xl font-bold text-emerald-400">${rp(totalIncomeCompleted)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Pending</p>
+          <p class="text-2xl font-bold text-amber-400">${rp(totalIncomePending)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">DP Masuk</p>
+          <p class="text-2xl font-bold text-cyan-400">${rp(totalDpPending)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Total Penjualan</p>
+          <p class="text-2xl font-bold text-blue-400">${rp(totalIncome)}</p>
         </div>
       </div>
     </div>
