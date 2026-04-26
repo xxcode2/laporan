@@ -396,20 +396,31 @@ function exportCsv() {
   const totalBarangTerjual = completed.reduce((s,o)=>s+(o.items_count||0),0);
   const totalBarangPending = pending.reduce((s,o)=>s+(o.items_count||0),0);
   const totalBarangSemuanya = totalBarangTerjual + totalBarangPending;
-  const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
-  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
-  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
-  const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
+  
+  // Total Penjualan dari SEMUA order
+  const totalIncome = rows.reduce((s,o)=>s+(o.total_price||0),0);
+  
+  // Total Modal dari SEMUA order
+  const totalModal = rows.reduce((s,o)=>s+(o.modal||0),0);
+  
+  // Profit = Total Penjualan - Total Modal
   const totalProfit = totalIncome - totalModal;
+  
+  // Uang Masuk Seller = checkout_amount dari terjual + dp_amount dari pending
+  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0) + 
+                          pending.reduce((s,o)=>s+(o.dp_amount||0),0);
+  
+  // Uang Belum Masuk Seller = sisa pembayaran dari pending
+  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
   
   csv.push(`Total Barang Terjual,${totalBarangTerjual}`);
   csv.push(`Total Barang Pending,${totalBarangPending}`);
   csv.push(`Total Barang Keseluruhan,${totalBarangSemuanya}`);
   csv.push(`Total Penjualan,${totalIncome}`);
-  csv.push(`Uang Masuk Seller,${uangMasukSeller}`);
-  csv.push(`Uang Belum Masuk Seller,${uangBelumMasukSeller}`);
   csv.push(`Total Modal,${totalModal}`);
   csv.push(`Total Profit,${totalProfit}`);
+  csv.push(`Uang Masuk Seller (Checkout + DP),${uangMasukSeller}`);
+  csv.push(`Uang Belum Masuk Seller (Sisa Pending),${uangBelumMasukSeller}`);
   csv.push(`Total Order Terjual,${completed.length}`);
   csv.push(`Total Order Pending,${pending.length}`);
 
@@ -434,12 +445,14 @@ function renderStats() {
   const pending = filtered.filter(d => d.status === 'Pending');
   const completed = filtered.filter(d => d.status === 'Terjual');
   
-  const pendingIncome = pending.reduce((s,o) => s + ((o.dp_amount||0) + (o.checkout_amount||0)), 0);
-  const completedIncome = completed.reduce((s,o) => s + (o.total_price||0), 0);
-  const totalIncome = pendingIncome + completedIncome;
+  // Pemasukan = total harga dari SEMUA order (pending + terjual)
+  const totalIncome = filtered.reduce((s,o) => s + (o.total_price||0), 0);
   
-  const totalModal = completed.reduce((s,o) => s + (o.modal||0), 0);
-  const profit = completedIncome - totalModal;
+  // Modal = modal dari SEMUA order (pending + terjual)
+  const totalModal = filtered.reduce((s,o) => s + (o.modal||0), 0);
+  
+  // Profit = total income - total modal
+  const profit = totalIncome - totalModal;
   
   const pendingTab = document.getElementById('pendingTabBadge');
   const completedTab = document.getElementById('completedTabBadge');
@@ -456,6 +469,7 @@ function renderStats() {
   const el = document.getElementById('statProfit');
   el.textContent = rp(profit);
   el.className = `text-2xl font-bold ${profit>=0?'text-blue-400':'text-red-400'}`;
+}
 }
 
 function renderOrders() {
@@ -568,15 +582,21 @@ function renderSummary() {
   const totalBarangPending = pending.reduce((s,o)=>s+(o.items_count||0),0);
   const totalBarangSemuanya = totalBarangTerjual + totalBarangPending;
 
-  // Hitung uang yang sudah masuk seller dan yang belum masuk
-  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
-  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
-  const totalUangBelumMasuk = uangBelumMasukSeller + (pending.length > 0 ? pending.reduce((s,o)=>s+(o.dp_amount||0),0) : 0);
-
-  const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
-  const sellerIncome = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
-  const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
+  // Total Penjualan (dari SEMUA order)
+  const totalIncome = filtered.reduce((s,o)=>s+(o.total_price||0),0);
+  
+  // Total Modal (dari SEMUA order)
+  const totalModal = filtered.reduce((s,o)=>s+(o.modal||0),0);
+  
+  // Profit = Total Penjualan - Total Modal
   const profit = totalIncome - totalModal;
+  
+  // Uang Masuk Seller = checkout_amount dari terjual + dp_amount dari pending
+  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0) + 
+                          pending.reduce((s,o)=>s+(o.dp_amount||0),0);
+  
+  // Uang Belum Masuk Seller = sisa pembayaran dari pending
+  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
 
   container.innerHTML = `
     <div class="glass rounded-2xl p-5">
@@ -588,7 +608,7 @@ function renderSummary() {
         </div>
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Masuk Seller</p>
-          <p class="text-2xl font-bold text-emerald-400">${rp(sellerIncome)}</p>
+          <p class="text-2xl font-bold text-emerald-400">${rp(uangMasukSeller)}</p>
         </div>
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Modal</p>
