@@ -350,10 +350,13 @@ function exportCsv() {
     return;
   }
 
-  const header = ['Tanggal', 'Customer', 'Jumlah Item', 'Harga Item', 'Total Harga', 'DP', 'Metode DP', 'Modal', 'Status', 'Checkout Date', 'Checkout Amount', 'Catatan'];
+  const header = ['ID', 'Tanggal', 'Customer', 'Jumlah Item', 'Harga Item', 'Total Harga', 'DP', 'Metode DP', 'Modal', 'Sisa Pembayaran', 'Status', 'Checkout Date', 'Checkout Amount (Masuk Seller)', 'Profit', 'Catatan'];
   const csv = [header.join(',')];
   rows.forEach(o => {
+    const remaining = (o.total_price || 0) - (o.dp_amount || 0);
+    const profit = (o.total_price || 0) - (o.modal || 0);
     const values = [
+      `"${o.id || ''}"`,
       `"${o.date || ''}"`,
       `"${o.customer_name || ''}"`,
       o.items_count || 0,
@@ -362,13 +365,41 @@ function exportCsv() {
       o.dp_amount || 0,
       `"${o.dp_method || ''}"`,
       o.modal || 0,
+      remaining,
       `"${o.status || ''}"`,
       `"${o.checkout_date || ''}"`,
       o.checkout_amount || 0,
+      profit,
       `"${o.note || ''}"`
     ];
     csv.push(values.join(','));
   });
+
+  // Tambah ringkasan di bawah data
+  csv.push(''); // Blank line
+  csv.push('RINGKASAN');
+  
+  const completed = rows.filter(d => d.status === 'Terjual');
+  const pending = rows.filter(d => d.status === 'Pending');
+  const totalBarangTerjual = completed.reduce((s,o)=>s+(o.items_count||0),0);
+  const totalBarangPending = pending.reduce((s,o)=>s+(o.items_count||0),0);
+  const totalBarangSemuanya = totalBarangTerjual + totalBarangPending;
+  const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
+  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
+  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
+  const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
+  const totalProfit = totalIncome - totalModal;
+  
+  csv.push(`Total Barang Terjual,${totalBarangTerjual}`);
+  csv.push(`Total Barang Pending,${totalBarangPending}`);
+  csv.push(`Total Barang Keseluruhan,${totalBarangSemuanya}`);
+  csv.push(`Total Penjualan,${totalIncome}`);
+  csv.push(`Uang Masuk Seller,${uangMasukSeller}`);
+  csv.push(`Uang Belum Masuk Seller,${uangBelumMasukSeller}`);
+  csv.push(`Total Modal,${totalModal}`);
+  csv.push(`Total Profit,${totalProfit}`);
+  csv.push(`Total Order Terjual,${completed.length}`);
+  csv.push(`Total Order Pending,${pending.length}`);
 
   const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
