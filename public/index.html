@@ -31,6 +31,8 @@ tailwind.config = {
   .order-row { transition: transform 0.2s, background 0.2s, border-color 0.2s; border: 1px solid rgba(148,163,184,0.12); }
   .order-row:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
   .tab-btn { transition: all 0.2s; }
+  header { transition: transform 0.25s ease, opacity 0.25s ease; }
+  .header-hidden { transform: translateY(-100%); opacity: 0; }
   .tab-btn.active { background: rgba(251,191,36,0.95); color: #0a0f1e !important; }
   .btn-primary { transition: all 0.2s ease; }
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(245,158,11,0.22); }
@@ -50,6 +52,10 @@ tailwind.config = {
       <div>
        <h1 id="headerTitle" class="text-xl font-bold text-white">Pakeinaja</h1>
        <p id="headerShop" class="text-xs text-slate-400 uppercase tracking-[0.18em] mb-2">Toko Saya</p>
+       <div class="flex flex-wrap items-center gap-2">
+         <span id="pendingCountBadge" class="chip bg-amber-500/10 text-amber-300">Pending 0</span>
+         <span id="completedCountBadge" class="chip bg-emerald-500/10 text-emerald-300">Terjual 0</span>
+       </div>
       </div>
      </div>
      <div class="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap md:justify-end">
@@ -107,7 +113,7 @@ tailwind.config = {
     </div>
    </section><!-- Tabs -->
    <section class="max-w-6xl mx-auto px-4 pt-4">
-    <div class="flex gap-1 bg-white/5 rounded-xl p-1 w-fit"><button onclick="switchTab('add')" id="tabAdd" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-[#0a0f1e]"> <span class="flex items-center gap-1.5"><i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Order</span> </button> <button onclick="switchTab('pending')" id="tabPending" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4"></i> Pending</span> </button> <button onclick="switchTab('completed')" id="tabCompleted" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4"></i> Terjual</span> </button> <button onclick="switchTab('summary')" id="tabSummary" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="pie-chart" class="w-4 h-4"></i> Ringkasan</span> </button>
+    <div class="flex gap-1 bg-white/5 rounded-xl p-1 w-fit"><button onclick="switchTab('add')" id="tabAdd" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-[#0a0f1e]"> <span class="flex items-center gap-1.5"><i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Order</span> </button> <button onclick="switchTab('pending')" id="tabPending" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4"></i> Pending <span id="pendingTabBadge" class="inline-flex items-center justify-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">0</span></span> </button> <button onclick="switchTab('completed')" id="tabCompleted" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4"></i> Terjual <span id="completedTabBadge" class="inline-flex items-center justify-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">0</span></span> </button> <button onclick="switchTab('summary')" id="tabSummary" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white"> <span class="flex items-center gap-1.5"><i data-lucide="pie-chart" class="w-4 h-4"></i> Ringkasan</span> </button>
     </div>
    </section><!-- Pending Tab -->
    <section id="panelPending" class="max-w-6xl mx-auto px-4 py-4 fade-in">
@@ -147,7 +153,7 @@ tailwind.config = {
       </div><!-- DP -->
       <div><label for="fDp" class="block text-xs font-semibold text-gray-400 mb-1.5">DP / Uang Muka (ribuan)</label> <input type="number" id="fDp" min="0" value="0" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none">
       </div><!-- Metode DP -->
-      <div class="md:col-span-2"><label for="fDpMethod" class="block text-xs font-semibold text-gray-400 mb-1.5">Metode DP</label> <select id="fDpMethod" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none"> <option value="-" class="bg-[#0d1224]">Tidak ada DP</option> <option value="BRI" class="bg-[#0d1224]">BRI</option> <option value="BCA" class="bg-[#0d1224]">BCA</option> <option value="BNI" class="bg-[#0d1224]">BNI</option> <option value="Mandiri" class="bg-[#0d1224]">Mandiri</option> <option value="Dana" class="bg-[#0d1224]">Dana</option> <option value="ShopeePay" class="bg-[#0d1224]">ShopeePay</option> <option value="GoPay" class="bg-[#0d1224]">GoPay</option> <option value="OVO" class="bg-[#0d1224]">OVO</option> <option value="Cash" class="bg-[#0d1224]">Cash</option> <option value="Lainnya" class="bg-[#0d1224]">Lainnya</option> </select>
+      <div class="md:col-span-2"><label for="fDpMethod" class="block text-xs font-semibold text-gray-400 mb-1.5">Metode DP</label> <select id="fDpMethod" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none"> <option value="-" class="bg-[#0d1224]">Tidak ada DP</option> <option value="BRI" class="bg-[#0d1224]">BRI</option> <option value="ShopeePay" class="bg-[#0d1224]">ShopeePay</option> <option value="Dana" class="bg-[#0d1224]">Dana</option> </select>
       </div><!-- Catatan -->
       <div class="md:col-span-2"><label for="fNote" class="block text-xs font-semibold text-gray-400 mb-1.5">Catatan (opsional)</label> <textarea id="fNote" rows="2" placeholder="Catatan tambahan..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none resize-none"></textarea>
       </div>
@@ -392,6 +398,15 @@ function renderStats() {
   const totalModal = completed.reduce((s,o) => s + (o.modal||0), 0);
   const profit = completedIncome - totalModal;
   
+  const pendingTab = document.getElementById('pendingTabBadge');
+  const completedTab = document.getElementById('completedTabBadge');
+  if (pendingTab) pendingTab.textContent = pending.length;
+  if (completedTab) completedTab.textContent = completed.length;
+  const pendingHeader = document.getElementById('pendingCountBadge');
+  const completedHeader = document.getElementById('completedCountBadge');
+  if (pendingHeader) pendingHeader.textContent = `Pending ${pending.length}`;
+  if (completedHeader) completedHeader.textContent = `Terjual ${completed.length}`;
+  
   document.getElementById('statOrders').textContent = filtered.length;
   document.getElementById('statIncome').textContent = rp(totalIncome);
   document.getElementById('statModal').textContent = rp(totalModal);
@@ -496,6 +511,7 @@ function renderSummary() {
   completed.forEach(o => { 
     if(o.dp_amount>0&&o.dp_method&&o.dp_method!=='-'){ 
       const m=o.dp_method; 
+      if (!['BRI','ShopeePay'].includes(m)) return;
       if(!byMethod[m]) byMethod[m]={count:0,total:0}; 
       byMethod[m].count++; 
       byMethod[m].total+=o.dp_amount; 
@@ -503,16 +519,21 @@ function renderSummary() {
   });
 
   const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
+  const sellerIncome = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
   const totalModal = completed.reduce((s,o)=>s+(o.modal||0),0);
   const profit = totalIncome - totalModal;
 
   container.innerHTML = `
     <div class="glass rounded-2xl p-5">
       <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i> Ringkasan Penjualan</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Penjualan</p>
           <p class="text-2xl font-bold text-emerald-400">${rp(totalIncome)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Masuk Seller</p>
+          <p class="text-2xl font-bold text-emerald-400">${rp(sellerIncome)}</p>
         </div>
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Total Modal</p>
@@ -759,6 +780,19 @@ async function markCheckout(id) {
     showFormMsg('Gagal checkout: ' + (error.message || 'Terjadi kesalahan.'), false);
   }
 }
+
+let lastScrollY = window.scrollY || 0;
+const headerElement = document.querySelector('header');
+window.addEventListener('scroll', () => {
+  const currentY = window.scrollY || 0;
+  if (!headerElement) return;
+  if (currentY > lastScrollY + 16 && currentY > 80) {
+    headerElement.classList.add('header-hidden');
+  } else if (currentY < lastScrollY - 10 || currentY < 40) {
+    headerElement.classList.remove('header-hidden');
+  }
+  lastScrollY = currentY;
+});
 
 lucide.createIcons();
 loadOrders();
