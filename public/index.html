@@ -501,7 +501,9 @@ function renderOrders() {
     }
 
 function renderSummary() {
-  const completed = getFiltered().filter(d => d.status==='Terjual');
+  const filtered = getFiltered();
+  const completed = filtered.filter(d => d.status==='Terjual');
+  const pending = filtered.filter(d => d.status==='Pending');
   const container = document.getElementById('summaryContent');
   const empty = document.getElementById('summaryEmpty');
   if (completed.length===0) { container.innerHTML=''; empty.classList.remove('hidden'); return; }
@@ -517,6 +519,16 @@ function renderSummary() {
       byMethod[m].total+=o.dp_amount; 
     }
   });
+
+  // Hitung total barang
+  const totalBarangTerjual = completed.reduce((s,o)=>s+(o.items_count||0),0);
+  const totalBarangPending = pending.reduce((s,o)=>s+(o.items_count||0),0);
+  const totalBarangSemuanya = totalBarangTerjual + totalBarangPending;
+
+  // Hitung uang yang sudah masuk seller dan yang belum masuk
+  const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
+  const uangBelumMasukSeller = pending.reduce((s,o)=>s+((o.total_price||0)-(o.dp_amount||0)),0);
+  const totalUangBelumMasuk = uangBelumMasukSeller + (pending.length > 0 ? pending.reduce((s,o)=>s+(o.dp_amount||0),0) : 0);
 
   const totalIncome = completed.reduce((s,o)=>s+(o.total_price||0),0);
   const sellerIncome = completed.reduce((s,o)=>s+(o.checkout_amount||0),0);
@@ -556,6 +568,42 @@ function renderSummary() {
             <p class="text-xs text-gray-500">${v.count}x transaksi</p>
           </div>
         `).join('')}
+      </div>
+      <div class="mt-5 pt-5 border-t border-white/10">
+        <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2"><i data-lucide="package" class="w-4 h-4 text-emerald-400"></i> Ringkasan Barang</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-emerald-500/10 rounded-lg p-3 text-center border border-emerald-500/20">
+            <p class="text-xs text-emerald-400 mb-1">Barang Terjual</p>
+            <p class="text-2xl font-bold text-emerald-400">${totalBarangTerjual}</p>
+          </div>
+          <div class="bg-amber-500/10 rounded-lg p-3 text-center border border-amber-500/20">
+            <p class="text-xs text-amber-400 mb-1">Barang Pending</p>
+            <p class="text-2xl font-bold text-amber-400">${totalBarangPending}</p>
+          </div>
+          <div class="bg-blue-500/10 rounded-lg p-3 text-center border border-blue-500/20">
+            <p class="text-xs text-blue-400 mb-1">Total Barang</p>
+            <p class="text-2xl font-bold text-blue-400">${totalBarangSemuanya}</p>
+          </div>
+          <div class="bg-purple-500/10 rounded-lg p-3 text-center border border-purple-500/20">
+            <p class="text-xs text-purple-400 mb-1">Terjual vs Pending</p>
+            <p class="text-lg font-bold text-purple-400">${totalBarangTerjual}:${totalBarangPending}</p>
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 pt-5 border-t border-white/10">
+        <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2"><i data-lucide="wallet" class="w-4 h-4 text-green-400"></i> Ringkasan Uang</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="bg-green-500/10 rounded-lg p-4 text-center border border-green-500/20">
+            <p class="text-xs text-green-400 mb-1">Uang Sudah Masuk Seller</p>
+            <p class="text-2xl font-bold text-green-400">${rp(uangMasukSeller)}</p>
+            <p class="text-xs text-gray-500 mt-2">${completed.length} order terjual</p>
+          </div>
+          <div class="bg-red-500/10 rounded-lg p-4 text-center border border-red-500/20">
+            <p class="text-xs text-red-400 mb-1">Uang Belum Masuk Seller</p>
+            <p class="text-2xl font-bold text-red-400">${rp(uangBelumMasukSeller)}</p>
+            <p class="text-xs text-gray-500 mt-2">${pending.length} order pending</p>
+          </div>
+        </div>
       </div>
     </div>`:''}
   `;
