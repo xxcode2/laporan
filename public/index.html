@@ -191,6 +191,9 @@ let currentDateFrom = '';
 let currentDateTo = '';
 let currentSearch = '';
 let currentStatus = '';
+let pendingCurrentPage = 1;
+let completedCurrentPage = 1;
+const rowsPerPage = 10;
 
 const defaultConfig = {
   app_title: 'Laporan Keuangan Harian',
@@ -303,11 +306,12 @@ function switchTab(t) {
 }
 
 // Filter
-document.getElementById('dateFromFilter').addEventListener('change', e => { currentDateFrom = e.target.value; renderAll(); });
-document.getElementById('dateToFilter').addEventListener('change', e => { currentDateTo = e.target.value; renderAll(); });
-document.getElementById('searchInput').addEventListener('input', e => { currentSearch = e.target.value.trim().toLowerCase(); renderAll(); });
-document.getElementById('statusFilter').addEventListener('change', e => { currentStatus = e.target.value; renderAll(); });
-function clearDateFilter() { document.getElementById('dateFromFilter').value=''; document.getElementById('dateToFilter').value=''; currentDateFrom=''; currentDateTo=''; renderAll(); }
+function resetPagination() { pendingCurrentPage = 1; completedCurrentPage = 1; }
+document.getElementById('dateFromFilter').addEventListener('change', e => { currentDateFrom = e.target.value; resetPagination(); renderAll(); });
+document.getElementById('dateToFilter').addEventListener('change', e => { currentDateTo = e.target.value; resetPagination(); renderAll(); });
+document.getElementById('searchInput').addEventListener('input', e => { currentSearch = e.target.value.trim().toLowerCase(); resetPagination(); renderAll(); });
+document.getElementById('statusFilter').addEventListener('change', e => { currentStatus = e.target.value; resetPagination(); renderAll(); });
+function clearDateFilter() { document.getElementById('dateFromFilter').value=''; document.getElementById('dateToFilter').value=''; currentDateFrom=''; currentDateTo=''; resetPagination(); renderAll(); }
 
 function getFiltered() {
   let items = allData;
@@ -476,11 +480,30 @@ function renderOrders() {
   const pending = filtered.filter(d => d.status === 'Pending').sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const completed = filtered.filter(d => d.status === 'Terjual').sort((a,b) => (b.checkout_date||'').localeCompare(a.checkout_date||''));
   
-  renderOrderList('Pending', pending, 'pendingList', 'emptyPending');
-  renderOrderList('Completed', completed, 'completedList', 'emptyCompleted');
+  const pendingTotal = pending.length;
+  const completedTotal = completed.length;
+  const pendingPages = Math.max(1, Math.ceil(pendingTotal / rowsPerPage));
+  const completedPages = Math.max(1, Math.ceil(completedTotal / rowsPerPage));
+  if (pendingCurrentPage > pendingPages) pendingCurrentPage = pendingPages;
+  if (completedCurrentPage > completedPages) completedCurrentPage = completedPages;
+
+  const pendingPage = pending.slice((pendingCurrentPage - 1) * rowsPerPage, pendingCurrentPage * rowsPerPage);
+  const completedPage = completed.slice((completedCurrentPage - 1) * rowsPerPage, completedCurrentPage * rowsPerPage);
+
+  renderOrderList('Pending', pendingPage, 'pendingList', 'emptyPending', pendingTotal, pendingCurrentPage, pendingPages);
+  renderOrderList('Completed', completedPage, 'completedList', 'emptyCompleted', completedTotal, completedCurrentPage, completedPages);
 }
 
- function renderOrderList(type, orders, containerId, emptyId) {
+function changePage(type, page) {
+  if (type === 'Pending') {
+    pendingCurrentPage = page;
+  } else if (type === 'Completed') {
+    completedCurrentPage = page;
+  }
+  renderOrders();
+}
+
+function renderOrderList(type, orders, containerId, emptyId, totalCount, currentPage, pageCount) {
       const container = document.getElementById(containerId);
       const empty = document.getElementById(emptyId);
       
@@ -491,11 +514,23 @@ function renderOrders() {
       }
       empty.classList.add('hidden');
       
+      const pageNav = pageCount > 1 ? `
+        <div class="flex flex-col gap-3 mt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="text-sm text-slate-400">Halaman ${currentPage} dari ${pageCount} (${totalCount} order)</div>
+          <div class="flex items-center gap-2">
+            <button ${currentPage===1?'disabled':''} onclick="changePage('${type}', ${currentPage-1})" class="px-3 py-2 rounded-xl border border-white/10 text-sm ${currentPage===1?'opacity-40 cursor-not-allowed':'hover:bg-white/5'}">Sebelumnya</button>
+            <button ${currentPage===pageCount?'disabled':''} onclick="changePage('${type}', ${currentPage+1})" class="px-3 py-2 rounded-xl border border-white/10 text-sm ${currentPage===pageCount?'opacity-40 cursor-not-allowed':'hover:bg-white/5'}">Berikutnya</button>
+          </div>
+        </div>` : '';
+
       container.innerHTML = orders.map(o => {
-        const priceArr = (o.item_prices||'').split(',').map(p => parseInt(p.trim())||0);
-        const prices = priceArr.map(p => rp(p)).join(' + ');
+        const priceArr = (o.item_prices||'').split(',').map(p => parseInt(p.replace(/k/gi,'').trim())||0);
+        const prices = priceArr.map(p => rp(p*1000)).join(' + ');
         const remaining = (o.total_price||0) - (o.dp_amount||0);
         const profit = (o.total_price||0) - (o.modal||0);
+        const profitLabel = profit >= 0 ? 'Profit' : 'Kerugian';
+        const profitClass = profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const profitBg = profit >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20';
         
         return `
           <div class="glass rounded-3xl p-5 order-row" data-id="${o.id || o.__backendId}">
@@ -510,7 +545,7 @@ function renderOrders() {
                     <h3 class="text-xl font-semibold text-white truncate">${o.customer_name||'-'}</h3>
                     <span class="text-sm text-slate-300">${o.items_count||0} item</span>
                   </div>
-                  <p class="text-sm text-slate-200 leading-6">${prices}</p>
+                  <p class="text-sm text-slate-200 leading-6">Harga per item: ${prices}</p>
                 </div>
                 <div class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   <div class="rounded-2xl bg-slate-950/70 border border-white/10 p-3">
@@ -527,6 +562,16 @@ function renderOrders() {
                 ${o.note?`<div class="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4 text-slate-100"><p class="text-xs text-amber-300 uppercase tracking-[0.15em] mb-2">Catatan</p><p class="text-sm leading-6">${o.note}</p></div>`:''}
               </div>
               <div class="flex flex-col gap-3 items-start sm:items-end">
+                <div class="rounded-2xl ${profitBg} border p-3 text-right w-full sm:w-auto">
+                  <p class="text-xs ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}">${profitLabel}</p>
+                  <p class="font-bold text-sm ${profitClass}">${rp(profit)}</p>
+                </div>
+                ${type==='Completed'?`
+                  <div class="rounded-2xl bg-white/5 p-3 text-right w-full sm:w-auto">
+                    <p class="text-xs text-gray-500">Masuk seller</p>
+                    <p class="font-semibold text-sm text-emerald-300">${rp(o.checkout_amount||0)}</p>
+                  </div>
+                `:''}
                 ${type==='Pending'?`
                   <div class="flex flex-wrap gap-2">
                     <button onclick="editOrder('${o.id || o.__backendId}')" class="px-4 py-2 rounded-2xl bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-2">
@@ -537,13 +582,6 @@ function renderOrders() {
                     </button>
                   </div>
                 `:''}
-                ${type==='Completed'?`
-                  <div class="rounded-2xl bg-white/5 p-3 text-right w-full sm:w-auto">
-                    <p class="text-xs text-gray-500">Profit</p>
-                    <p class="font-bold text-sm ${profit>=0?'text-emerald-400':'text-red-400'}">${rp(profit)}</p>
-                    ${o.checkout_amount>0?`<p class="text-xs text-gray-500 mt-2">Masuk seller</p><p class="font-semibold text-sm text-emerald-300">${rp(o.checkout_amount)}</p>`:''}
-                  </div>
-                `:''}
                 <button onclick="requestDelete('${o.id || o.__backendId}')" class="p-2 rounded-2xl hover:bg-red-500/10 text-slate-300 hover:text-red-400">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
@@ -551,7 +589,7 @@ function renderOrders() {
             </div>
           </div>
         `;
-      }).join('');
+      }).join('') + pageNav;
       
       lucide.createIcons();
     }
@@ -562,7 +600,7 @@ function renderSummary() {
   const pending = filtered.filter(d => d.status==='Pending');
   const container = document.getElementById('summaryContent');
   const empty = document.getElementById('summaryEmpty');
-  if (completed.length===0) { container.innerHTML=''; empty.classList.remove('hidden'); return; }
+  if (filtered.length===0) { container.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
 
   const byMethod = {};
@@ -594,6 +632,8 @@ function renderSummary() {
   const totalIncomeCompleted = completed.reduce((s,o)=>s+(o.total_price||0),0);
   const totalIncomePending = pending.reduce((s,o)=>s+(o.total_price||0),0);
   const totalDpPending = pending.reduce((s,o)=>s+(o.dp_amount||0),0);
+  const completedProfit = completed.reduce((s,o)=>s+((o.total_price||0)-(o.modal||0)),0);
+  const pendingPotentialProfit = pending.reduce((s,o)=>s+((o.total_price||0)-(o.modal||0)),0);
   
   // Uang Masuk Seller = checkout_amount dari terjual + dp_amount dari pending
   const uangMasukSeller = completed.reduce((s,o)=>s+(o.checkout_amount||0),0) + 
@@ -621,6 +661,16 @@ function renderSummary() {
         <div class="bg-white/5 rounded-xl p-4 text-center">
           <p class="text-xs text-gray-500 mb-1">Profit</p>
           <p class="text-2xl font-bold ${profit>=0?'text-blue-400':'text-red-400'}">${rp(profit)}</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Profit Realized</p>
+          <p class="text-2xl font-bold text-emerald-400">${rp(completedProfit)}</p>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <p class="text-xs text-gray-500 mb-1">Potential Profit</p>
+          <p class="text-2xl font-bold ${pendingPotentialProfit>=0?'text-amber-400':'text-red-400'}">${rp(pendingPotentialProfit)}</p>
         </div>
       </div>
     </div>
