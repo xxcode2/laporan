@@ -350,34 +350,46 @@ function exportCsv() {
     return;
   }
 
+  // Helper function untuk escape CSV values
+  const escapeCSV = (val) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  };
+
   const header = ['ID', 'Tanggal', 'Customer', 'Jumlah Item', 'Harga Item', 'Total Harga', 'DP', 'Metode DP', 'Modal', 'Sisa Pembayaran', 'Status', 'Checkout Date', 'Checkout Amount (Masuk Seller)', 'Profit', 'Catatan'];
-  const csv = [header.join(',')];
+  const csv = [header.map(h => escapeCSV(h)).join(',')];
+  
   rows.forEach(o => {
     const remaining = (o.total_price || 0) - (o.dp_amount || 0);
     const profit = (o.total_price || 0) - (o.modal || 0);
     const values = [
-      `"${o.id || ''}"`,
-      `"${o.date || ''}"`,
-      `"${o.customer_name || ''}"`,
+      o.id || '',
+      o.date || '',
+      o.customer_name || '',
       o.items_count || 0,
-      `"${o.item_prices || ''}"`,
+      o.item_prices || '',
       o.total_price || 0,
       o.dp_amount || 0,
-      `"${o.dp_method || ''}"`,
+      o.dp_method || '',
       o.modal || 0,
       remaining,
-      `"${o.status || ''}"`,
-      `"${o.checkout_date || ''}"`,
+      o.status || '',
+      o.checkout_date || '',
       o.checkout_amount || 0,
       profit,
-      `"${o.note || ''}"`
+      o.note || ''
     ];
-    csv.push(values.join(','));
+    csv.push(values.map(v => escapeCSV(v)).join(','));
   });
 
   // Tambah ringkasan di bawah data
   csv.push(''); // Blank line
-  csv.push('RINGKASAN');
+  csv.push('RINGKASAN STATISTIK');
+  csv.push(''); // Blank line
   
   const completed = rows.filter(d => d.status === 'Terjual');
   const pending = rows.filter(d => d.status === 'Pending');
